@@ -2,35 +2,110 @@
 
 import cv2
 import matplotlib.pyplot as plt
+import numpy as np
+import pdb
+
 
 im_list = ['1.jpeg', '2.jpg', '3.jpg', '4.jpg']
-bbox = (290, 132, 365, 298)
 
-im = cv2.imread(im_list[0], 0)
-# cv2.rectangle(im, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (0, 255, 255))
-hist = cv2.calcHist([im], [0], None, [256], [0, 255])
+bbox = (310, 152, 345, 278)
+bbox_w = bbox[2] - bbox[0]
+bbox_h = bbox[3] - bbox[1]
+
+surbox = (bbox[0] - int(bbox_w / 2),
+          bbox[1] - int(bbox_h / 2),
+          bbox[2] + int(bbox_w / 2),
+          bbox[3] + int(bbox_h / 2))
+
+im = cv2.imread(im_list[0])
+#im = im[:, :, -1:]
+sum_im = im.shape[0] * im.shape[1] *im.shape[2]
+sum_bbox = bbox_w * bbox_h * 3
+
+cv2.rectangle(im, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (0, 255, 0))
+cv2.rectangle(im, (surbox[0], surbox[1]), (surbox[2], surbox[3]), (0, 0, 255))
+
+im_bbox = im[bbox[1]:bbox[3], bbox[0]:bbox[2]]
+im_sur = im[surbox[1]:surbox[3], surbox[0]:surbox[2]]
+
+im_hist = []
+im_bbox_hist =[]
+im_sur_hist = []
+for i in range(3):
+    t = cv2.calcHist([im], [i], None, [256], [0, 255])
+    im_hist.append(t)
+    t = cv2.calcHist([im_bbox], [i], None, [256], [0, 255])
+    im_bbox_hist.append(t)
+    t = cv2.calcHist([im_sur], [i], None, [256], [0, 255])
+    im_sur_hist.append(t)
+
+
 # cv2.imshow('hist', hist)
+# draw hist
+fig = plt.figure()
+fig.add_subplot(331)
+plt.title('im hist r')
+plt.plot(range(len(im_hist[0])), im_hist[2])
+fig.add_subplot(332)
+plt.title('im hist g')
+plt.plot(range(len(im_hist[0])), im_hist[1])
+fig.add_subplot(333)
+plt.title('im hist b')
+plt.plot(range(len(im_hist[0])), im_hist[0])
 
-im_bbox = im[132:298, 290:365]
-hist_bbox = cv2.calcHist([im_bbox], [0], None, [256], [0, 255])
+fig.add_subplot(334)
+plt.title('im_bbox hist r')
+plt.plot(range(len(im_bbox_hist[0])), im_bbox_hist[2])
+fig.add_subplot(335)
+plt.title('im_bbox hist g ')
+plt.plot(range(len(im_bbox_hist[0])), im_bbox_hist[1])
+fig.add_subplot(336)
+plt.title('im_bbox hist b')
+plt.plot(range(len(im_bbox_hist[0])), im_bbox_hist[0])
+
+fig.add_subplot(337)
+plt.title('im_sur hist r')
+plt.plot(range(len(im_sur_hist[0])), im_sur_hist[2])
+fig.add_subplot(338)
+plt.title('im_sur hist g ')
+plt.plot(range(len(im_sur_hist[0])), im_sur_hist[1])
+fig.add_subplot(339)
+plt.title('im_sur hist b')
+plt.plot(range(len(im_sur_hist[0])), im_sur_hist[0])
 
 
+# show image
+fig2 = plt.figure()
+# plt.imshow(im, cmap='gray')
 
-cv2.imshow('win0', im)
-cv2.imshow('bbox', im_bbox)
+plt.imshow(im[:, :, ::-1])
 
-figure = plt.figure()
-f1 = figure.add_subplot(221)
-plt.title('im hist')
-f1.plot(range(len(hist)), hist)
+# distractor aware
+map_obj_sur = np.full(im.shape, 0.5 * 255).astype(np.uint8)
 
-f2 = figure.add_subplot(222)
-plt.title('bbox hist')
-f2.plot(range(len(hist_bbox)), hist_bbox)
+for h in range(im.shape[0]):
+    for w in range(im.shape[1]):
+        for c in range(im.shape[2]):
+            #print im[h][w][c]
+            if 0 == im_bbox_hist[c][im[h][w][c]]:
+                element = 0
+            else:
+                element = (im_bbox_hist[c][im[h][w][c]] / sum_bbox) / (im_hist[c][im[h][w][c]] / sum_im +
+                                                                     im_bbox_hist[c][im[h][w]][c] / sum_bbox)
+
+            map_obj_sur[h][w][c] = np.uint8(element*255)
 
 
-print im
-plt.show(figure)
-# print hist
+#print 'hist', im_bbox_hist
+
+fig3 = plt.figure()
+plt.title('obj surrounding map')
+plt.imshow(map_obj_sur[:, :, ::-1])
+
+
+plt.show()
+
+# cv2.imshow('win0', im)
+# cv2.imshow('bbox', im_bbox)
 # cv2.waitKey(0)
-cv2.destroyAllWindows()
+# cv2.destroyAllWindows()
