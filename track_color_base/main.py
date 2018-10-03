@@ -6,16 +6,18 @@ import numpy as np
 import pdb
 
 
-im_list = ['1.jpeg', '2.jpg', '3.jpg', '4.jpg']
+im_list = ['00000001.jpg', '1.jpeg', '2.jpg', '3.jpg', '4.jpg']
 
-bbox = (310, 152, 345, 278)
+num_hist = 16
+#bbox = (300, 142, 355, 288)
+bbox = (246, 209, 270, 232)
 bbox_w = bbox[2] - bbox[0]
 bbox_h = bbox[3] - bbox[1]
 
-surbox = (bbox[0] - int(bbox_w / 2),
-          bbox[1] - int(bbox_h / 2),
-          bbox[2] + int(bbox_w / 2),
-          bbox[3] + int(bbox_h / 2))
+surbox = (bbox[0] - int(bbox_w / 2.5),
+          bbox[1] - int(bbox_h / 2.5),
+          bbox[2] + int(bbox_w / 2.5),
+          bbox[3] + int(bbox_h / 2.5))
 
 im = cv2.imread(im_list[0])
 #im = im[:, :, -1:]
@@ -29,15 +31,15 @@ im_bbox = im[bbox[1]:bbox[3], bbox[0]:bbox[2]]
 im_sur = im[surbox[1]:surbox[3], surbox[0]:surbox[2]]
 
 im_hist = []
-im_bbox_hist =[]
+im_bbox_hist = []
 im_sur_hist = []
-for i in range(3):
-    t = cv2.calcHist([im], [i], None, [256], [0, 255])
-    im_hist.append(t)
-    t = cv2.calcHist([im_bbox], [i], None, [256], [0, 255])
-    im_bbox_hist.append(t)
-    t = cv2.calcHist([im_sur], [i], None, [256], [0, 255])
-    im_sur_hist.append(t)
+#for i in range(3):
+im_hist = cv2.calcHist([im], [0, 1, 2], None, [num_hist], [[0, 255], [0, 255], [0, 255]])
+
+im_bbox_hist = cv2.calcHist([im_bbox], [0, 1, 2], None, [num_hist], [[0, 255], [0, 255], [0, 255]])
+
+im_sur_hist = cv2.calcHist([im_sur], [0, 1, 2], None, [num_hist], [0, 255])
+
 
 
 # cv2.imshow('hist', hist)
@@ -87,11 +89,11 @@ for h in range(im.shape[0]):
     for w in range(im.shape[1]):
         for c in range(im.shape[2]):
             #print im[h][w][c]
-            if 0 == im_bbox_hist[c][im[h][w][c]]:
+            index = int(im[h][w][c]/(256/num_hist))
+            if 0 == im_bbox_hist[c][index]:
                 element = 0
             else:
-                element = (im_bbox_hist[c][im[h][w][c]] / sum_bbox) / (im_hist[c][im[h][w][c]] / sum_im +
-                                                                     im_bbox_hist[c][im[h][w]][c] / sum_bbox)
+                element = (im_bbox_hist[c][index]) / (im_sur_hist[c][index])
 
             map_obj_sur[h][w][c] = np.uint8(element*255)
 
@@ -100,7 +102,7 @@ for h in range(im.shape[0]):
 
 fig3 = plt.figure()
 plt.title('obj surrounding map')
-plt.imshow(map_obj_sur[:, :, ::-1])
+plt.imshow(np.sum(map_obj_sur[:, :, ::-1], axis=2), cmap='gray')
 
 
 plt.show()
@@ -109,3 +111,5 @@ plt.show()
 # cv2.imshow('bbox', im_bbox)
 # cv2.waitKey(0)
 # cv2.destroyAllWindows()
+
+
